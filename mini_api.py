@@ -51,3 +51,12 @@ def get_stats():
     total = len(tasks)
     done = sum(1 for t in tasks if t["done"])
     return {"total": total, "done": done, "pending": total - done}
+
+# I added an extra function because it seems like a good option to have
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int):
+    for i, task in enumerate(tasks):
+        if task["id"] == task_id:
+            tasks.pop(i)   # Remove the task from the list
+            return
+    raise HTTPException(status_code=404, detail="Task not found")

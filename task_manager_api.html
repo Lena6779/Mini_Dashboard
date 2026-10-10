@@ -1,235 +1,316 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Dashboard</title>
-  <style>
-    * { box-sizing: border-box; }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      color: #222;
-      max-width: 700px;
-      margin: 40px auto;
-      padding: 0 16px;
-    }
-
-    h1 { margin-bottom: 4px; }
-
-    #last-updated {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    /* ---- Stats bar ---- */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .stat-card {
-      background: white;
-      border-radius: 8px;
-      padding: 16px;
-      text-align: center;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .stat-number { font-size: 28px; font-weight: bold; }
-    .stat-label  { color: #666; font-size: 14px; }
-
-    #stat-done    { color: #2e7d32; }
-    #stat-pending { color: #ef6c00; }
-
-    /* ---- Add form + refresh ---- */
-    .controls {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    #task-input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 15px;
-    }
-
-    button {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
-      font-size: 15px;
-      cursor: pointer;
-      background: #1976d2;
-      color: white;
-    }
-
-    button:hover { opacity: 0.9; }
-    #refresh-btn { background: #555; }
-
-    /* ---- Task list ---- */
-    #task-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    #task-list li {
-      background: white;
-      border-radius: 6px;
-      padding: 12px 16px;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .status {
-      font-size: 13px;
-      padding: 4px 10px;
-      border-radius: 12px;
-    }
-
-    .status.done    { background: #e8f5e9; color: #2e7d32; }
-    .status.pending { background: #fff3e0; color: #ef6c00; }
-
-    #message { color: #c62828; margin-bottom: 12px; }
-  </style>
-</head>
-<body>
-  <h1>Task Dashboard</h1>
-  <p id="last-updated">Last updated: never</p>
-
-  <!-- 1. Stats bar -->
-  <div class="stats">
-    <div class="stat-card">
-      <div class="stat-number" id="stat-total">-</div>
-      <div class="stat-label">Total</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number" id="stat-done">-</div>
-      <div class="stat-label">Done</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number" id="stat-pending">-</div>
-      <div class="stat-label">Pending</div>
-    </div>
-  </div>
-
-  <!-- 3. Add form + 4. Refresh button -->
-  <form class="controls" id="add-form">
-    <input type="text" id="task-input" placeholder="New task title..." required>
-    <button type="submit">Add Task</button>
-    <button type="button" id="refresh-btn">Refresh</button>
-  </form>
-
-  <p id="message"></p>
-
-  <!-- 2. Task list -->
-  <ul id="task-list"></ul>
-
-  <script>
-    // Change this if your API runs on a different port
-    const API_URL = "http://127.0.0.1:8000";
-
-    // ---------- 1. Stats bar ----------
-    async function loadStats() {
-      const response = await fetch(`${API_URL}/stats`);
-      if (!response.ok) throw new Error(`/stats returned ${response.status}`);
-      const stats = await response.json();
-
-      document.getElementById("stat-total").textContent = stats.total;
-      document.getElementById("stat-done").textContent = stats.done;
-      document.getElementById("stat-pending").textContent = stats.pending;
-    }
-
-    // ---------- 2. Task list ----------
-    async function loadTasks() {
-      const response = await fetch(`${API_URL}/tasks`);
-      if (!response.ok) throw new Error(`/tasks returned ${response.status}`);
-      const tasks = await response.json();
-
-      const list = document.getElementById("task-list");
-      list.innerHTML = "";
-
-      if (tasks.length === 0) {
-        list.innerHTML = "<li>No tasks yet. Add one above!</li>";
-        return;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Dashboard</title>
+    <style>
+      * {
+        box-sizing: border-box;
       }
 
-      tasks.forEach(task => {
-        const li = document.createElement("li");
-
-        const title = document.createElement("span");
-        title.textContent = task.title;   // textContent is safer than innerHTML for user input
-
-        const status = document.createElement("span");
-        status.className = task.done ? "status done" : "status pending";
-        status.textContent = task.done ? "Done" : "Pending";
-
-        li.appendChild(title);
-        li.appendChild(status);
-        list.appendChild(li);
-      });
-    }
-
-    // ---------- 5. Last updated timestamp ----------
-    function updateTimestamp() {
-      const time = new Date().toLocaleTimeString();
-      document.getElementById("last-updated").textContent = `Last updated: ${time}`;
-    }
-
-    // Fetches everything, then updates the timestamp
-    async function refreshDashboard() {
-      const message = document.getElementById("message");
-      message.textContent = "";
-
-      try {
-        await Promise.all([loadStats(), loadTasks()]);
-        updateTimestamp();
-      } catch (error) {
-        message.textContent = "Could not reach the API. Is mini_api.py running?";
-        console.error(error);
+      body {
+        font-family:
+          Times New Roman,
+          sans-serif;
+        background: #f4f6f8;
+        color: #222; /* Color is dark grey */
+        max-width: 700px;
+        margin: 40px auto;
+        padding: 0 16px;
       }
-    }
 
-    // ---------- 3. Add form ----------
-    document.getElementById("add-form").addEventListener("submit", async (event) => {
-      event.preventDefault();   // stop the page from reloading
+      h1 {
+        margin-bottom: 4px;
+      }
 
-      const input = document.getElementById("task-input");
-      const title = input.value.trim();
-      if (!title) return;
+      #last-updated {
+        color: #666; /* Color is light grey */
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
 
-      try {
-        const response = await fetch(`${API_URL}/tasks`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: title })
+      /* ---- Stats bar ---- */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 6px 16px rgba(25, 118, 210, 0.6); /* Wanted a more defined shadow around the boxes */
+      }
+
+      .stat-number {
+        font-size: 28px;
+        font-weight: bold;
+      }
+      .stat-label {
+        color: #666;
+        font-size: 14px;
+      } /* Light grey color */
+
+      #stat-done {
+        color: #2e7d32;
+      } /* Green color */
+      #stat-pending {
+        color: #ef6c00;
+      } /* Orange color */
+
+      /* ---- Add form + refresh ---- */
+      .controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+
+      #task-input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 15px;
+      }
+
+      button {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        cursor: pointer;
+        background: #1976d2;
+        color: white;
+      }
+
+      button:hover {
+        opacity: 0.9;
+      }
+      #refresh-btn {
+        background: #555;
+      }
+
+      /* ---- Task list ---- */
+      #task-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      #task-list li {
+        background: white;
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .status {
+        font-size: 13px;
+        padding: 4px 10px;
+        border-radius: 12px;
+      }
+
+      .status.done {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      .status.pending {
+        background: #fff3e0;
+        color: #ef6c00;
+      }
+
+      #message {
+        color: #c62828;
+        margin-bottom: 12px;
+      }
+
+      .task-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .delete-btn {
+        background: #c62828;
+        padding: 4px 10px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Task Dashboard</h1>
+    <p id="last-updated">Last updated: never</p>
+
+    <!-- 1. Stats bar -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-number" id="stat-total">-</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-done">-</div>
+        <div class="stat-label">Done</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-pending">-</div>
+        <div class="stat-label">Pending</div>
+      </div>
+    </div>
+
+    <!-- 3. Add form + 4. Refresh button -->
+    <form class="controls" id="add-form">
+      <input
+        type="text"
+        id="task-input"
+        placeholder="New task title..."
+        required
+      />
+      <button type="submit">Add Task</button>
+      <button type="button" id="refresh-btn">Refresh</button>
+    </form>
+
+    <p id="message"></p>
+
+    <!-- 2. Task list -->
+    <ul id="task-list"></ul>
+
+    <script>
+      // Change this if your API runs on a different port
+      const API_URL = "http://127.0.0.1:8000";
+
+      // ---------- 1. Stats bar ----------
+      async function loadStats() {
+        const response = await fetch(`${API_URL}/stats`);
+        if (!response.ok) throw new Error(`/stats returned ${response.status}`);
+        const stats = await response.json();
+
+        document.getElementById("stat-total").textContent = stats.total;
+        document.getElementById("stat-done").textContent = stats.done;
+        document.getElementById("stat-pending").textContent = stats.pending;
+      }
+
+      // ---------- 2. Task list ----------
+      async function loadTasks() {
+        const response = await fetch(`${API_URL}/tasks`);
+        if (!response.ok) throw new Error(`/tasks returned ${response.status}`);
+        const tasks = await response.json();
+
+        const list = document.getElementById("task-list");
+        list.innerHTML = "";
+
+        if (tasks.length === 0) {
+          list.innerHTML = "<li>No tasks yet. Add one above!</li>";
+          return;
+        }
+
+        tasks.forEach((task) => {
+          const li = document.createElement("li");
+
+          const title = document.createElement("span");
+          title.textContent = task.title; // textContent is safer than innerHTML for user input
+
+          const status = document.createElement("span");
+          status.className = task.done ? "status done" : "status pending";
+          status.textContent = task.done ? "Done" : "Pending";
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-btn";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.addEventListener("click", () => deleteTask(task.id));
+
+          // Group the badge and button so they sit together on the right
+          const actions = document.createElement("div");
+          actions.className = "task-actions";
+          actions.appendChild(status);
+          actions.appendChild(deleteBtn);
+
+          li.appendChild(title);
+          li.appendChild(actions);
+          list.appendChild(li);
         });
-        if (!response.ok) throw new Error(`POST /tasks returned ${response.status}`);
-
-        input.value = "";
-        refreshDashboard();   // show the new task and updated stats
-      } catch (error) {
-        document.getElementById("message").textContent = "Could not add the task.";
-        console.error(error);
       }
-    });
 
-    // ---------- 4. Refresh button ----------
-    document.getElementById("refresh-btn").addEventListener("click", refreshDashboard);
+      // ---------- Extra: Delete a task ----------
+      async function deleteTask(id) {
+        try {
+          const response = await fetch(`${API_URL}/tasks/${id}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) throw new Error(`DELETE returned ${response.status}`);
 
-    // Load data when the page first opens
-    refreshDashboard();
-  </script>
-</body>
+          refreshDashboard(); // update the list and stats
+        } catch (error) {
+          document.getElementById("message").textContent =
+            "Could not delete the task.";
+          console.error(error);
+        }
+      }
+
+      // ---------- 5. Last updated timestamp ----------
+      function updateTimestamp() {
+        const time = new Date().toLocaleTimeString();
+        document.getElementById("last-updated").textContent =
+          `Last updated: ${time}`;
+      }
+
+      // Fetches everything, then updates the timestamp
+      async function refreshDashboard() {
+        const message = document.getElementById("message");
+        message.textContent = "";
+
+        try {
+          await Promise.all([loadStats(), loadTasks()]);
+          updateTimestamp();
+        } catch (error) {
+          message.textContent =
+            "Could not reach the API. Is mini_api.py running?";
+          console.error(error);
+        }
+      }
+
+      // ---------- 3. Add form ----------
+      document
+        .getElementById("add-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault(); // stop the page from reloading
+
+          const input = document.getElementById("task-input");
+          const title = input.value.trim();
+          if (!title) return;
+
+          try {
+            const response = await fetch(`${API_URL}/tasks`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: title }),
+            });
+            if (!response.ok)
+              throw new Error(`POST /tasks returned ${response.status}`);
+
+            input.value = "";
+            refreshDashboard(); // show the new task and updated stats
+          } catch (error) {
+            document.getElementById("message").textContent =
+              "Could not add the task.";
+            console.error(error);
+          }
+        });
+
+      // ---------- 4. Refresh button ----------
+      document
+        .getElementById("refresh-btn")
+        .addEventListener("click", refreshDashboard);
+
+      // Load data when the page first opens
+      refreshDashboard();
+    </script>
+  </body>
 </html>
